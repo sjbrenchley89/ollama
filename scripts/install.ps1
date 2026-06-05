@@ -41,6 +41,13 @@
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
+# Ensure TLS 1.2 is enabled for downloads. Windows PowerShell 5.1 defaults to a
+# SecurityProtocol that may exclude TLS 1.2, which causes the installer download
+# to fail against ollama.com even when the bootstrap 'irm' succeeded. Preserve any
+# protocols already enabled (e.g. TLS 1.3) rather than overwriting them.
+[Net.ServicePointManager]::SecurityProtocol = `
+    [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+
 # --------------------------------------------------------------------------
 # Configuration from environment variables
 # --------------------------------------------------------------------------
@@ -48,7 +55,9 @@ $ProgressPreference = "SilentlyContinue"
 $Version      = if ($env:OLLAMA_VERSION) { $env:OLLAMA_VERSION } else { "" }
 $InstallDir   = if ($env:OLLAMA_INSTALL_DIR) { $env:OLLAMA_INSTALL_DIR } else { "" }
 $Uninstall    = $env:OLLAMA_UNINSTALL -eq "1"
-$DebugInstall = [bool]$env:OLLAMA_DEBUG
+# A non-empty string is truthy in PowerShell, so [bool] alone would treat
+# OLLAMA_DEBUG=0 / OLLAMA_DEBUG=false as enabled. Exclude those explicitly.
+$DebugInstall = [bool]$env:OLLAMA_DEBUG -and $env:OLLAMA_DEBUG -ne "0" -and $env:OLLAMA_DEBUG -ne "false"
 
 # --------------------------------------------------------------------------
 # Constants
